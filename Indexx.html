@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lost &amp; Found System (CRUD + Sorting)</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --lost: #dc2626;
+      --lost-bg: #fee2e2;
+      --found: #059669;
+      --found-bg: #d1fae5;
+      --warn: #d97706;
+      --danger: #ef4444;
+      --info: #0284c7;
+      --radius: 12px;
+      --shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px 48px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    /* Header & Summary Stats */
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .mode-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #e0e7ff;
+      color: #1e40af;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 760px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      border-top: 4px solid var(--primary);
+    }
+
+    .stat-box.lost-stat { border-top-color: var(--lost); }
+    .stat-box.found-stat { border-top-color: var(--found); }
+    .stat-box.resolved-stat { border-top-color: var(--info); }
+
+    .stat-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    /* Main Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 880px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: #334155;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.92rem;
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 13px;
+      font-weight: 600;
+      font-size: 0.86rem;
+      transition: opacity 0.15s ease, transform 0.05s ease, background 0.15s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      flex: 1;
+      padding: 11px;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    /* Filter & Sort Toolbar */
+    .toolbar {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1.3fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 720px) {
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .toolbar input, .toolbar select {
+      margin: 0;
+    }
+
+    .toolbar-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .btn-reset-filters {
+      background: transparent;
+      color: var(--primary);
+      padding: 4px 8px;
+      font-size: 0.82rem;
+    }
+
+    .btn-reset-filters:hover {
+      background: #eff6ff;
+    }
+
+    /* Item Cards */
+    .item-card {
+      border-left: 5px solid var(--lost);
+    }
+
+    .item-card.found {
+      border-left-color: var(--found);
+    }
+
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-lost {
+      background: var(--lost-bg);
+      color: var(--lost);
+    }
+
+    .badge-found {
+      background: var(--found-bg);
+      color: var(--found);
+    }
+
+    .badge-open {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-claimed, .badge-returned {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .item-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+
+    .item-desc {
+      margin: 10px 0 8px;
+      color: #334155;
+      white-space: pre-line;
+    }
+
+    .meta {
+      background: var(--surface-alt);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.84rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn-edit { background: var(--info); color: #fff; }
+    .btn-resolve { background: var(--found); color: #fff; }
+    .btn-reopen { background: var(--warn); color: #fff; }
+    .btn-delete { background: var(--danger); color: #fff; }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 18px;
+      color: var(--muted);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0f172a;
+      color: #fff;
+      padding: 11px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <h1>Lost &amp; Found System</h1>
+      <span class="mode-pill" id="storageBadge">Checking storage...</span>
+    </header>
+
+    <!-- Summary Metrics -->
+    <section class="stats-grid" aria-label="Summary statistics">
+      <div class="stat-box">
+        <div class="stat-label">Total Records</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-box lost-stat">
+        <div class="stat-label">Lost Items</div>
+        <div class="stat-value" id="statLost">0</div>
+      </div>
+      <div class="stat-box found-stat">
+        <div class="stat-label">Found Items</div>
+        <div class="stat-value" id="statFound">0</div>
+      </div>
+      <div class="stat-box resolved-stat">
+        <div class="stat-label">Claimed / Returned</div>
+        <div class="stat-value" id="statResolved">0</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <!-- CREATE / UPDATE FORM -->
+      <form class="card" id="itemForm">
+        <h2 id="formHeading">New Report</h2>
+        <p id="formSubtext" style="margin:0 0 8px; font-size:0.82rem; color:var(--muted);">
+          Fill in the item details below to save a record.
+        </p>
+
+        <input type="hidden" id="editId" />
+
+        <label for="report_type">Report Type</label>
+        <select id="report_type" required>
+          <option value="lost">Lost Item</option>
+          <option value="found">Found Item</option>
+        </select>
+
+        <label for="title">Item Title</label>
+        <input id="title" type="text" placeholder="e.g., Blue Stainless Tumbler" required />
+
+        <label for="category">Category</label>
+        <input id="category" type="text" value="General" placeholder="e.g., Electronics, IDs, Keys" />
+
+        <label for="location_name">Location</label>
+        <input id="location_name" type="text" placeholder="e.g., Library 2nd Floor / Gym" required />
+
+        <label for="incident_date">Incident Date</label>
+        <input id="incident_date" type="date" required />
+
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="Color, brand, serial/markings, or contents..." required></textarea>
+
+        <label for="reporter_name">Reporter Name</label>
+        <input id="reporter_name" type="text" placeholder="Full name" required />
+
+        <label for="contact_info">Contact Info</label>
+        <input id="contact_info" type="text" placeholder="Phone number or email" required />
+
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="open">Open</option>
+          <option value="claimed">Claimed</option>
+          <option value="returned">Returned</option>
+        </select>
+
+        <div class="btn-row">
+          <button class="btn-primary" type="submit" id="submitBtn">Add Item</button>
+          <button class="btn-secondary" type="button" id="cancelEditBtn" style="display:none;">Cancel</button>
+        </div>
+      </form>
+
+      <!-- SEARCH, FILTER, SORT & LIST -->
+      <div>
+        <div class="card">
+          <div class="toolbar">
+            <input id="searchInput" type="search" placeholder="Search title, description, location, category..." />
+            <select id="typeFilter" aria-label="Filter by type">
+              <option value="">All Types</option>
+              <option value="lost">Lost</option>
+              <option value="found">Found</option>
+            </select>
+            <select id="statusFilter" aria-label="Filter by status">
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="claimed">Claimed</option>
+              <option value="returned">Returned</option>
+            </select>
+            <select id="sortSelect" aria-label="Sort items">
+              <option value="newest">Sort: Newest Added</option>
+              <option value="oldest">Sort: Oldest Added</option>
+              <option value="date_desc">Sort: Date (Newest)</option>
+              <option value="date_asc">Sort: Date (Oldest)</option>
+              <option value="title_asc">Sort: Title (A–Z)</option>
+              <option value="title_desc">Sort: Title (Z–A)</option>
+              <option value="type_asc">Sort: Type (Found/Lost)</option>
+              <option value="status_asc">Sort: Status</option>
+            </select>
+          </div>
+          <div class="toolbar-footer">
+            <span id="countLabel">Loading records...</span>
+            <button type="button" class="btn-reset-filters" id="resetFiltersBtn">Reset Filters &amp; Sort</button>
+          </div>
+        </div>
+
+        <div id="itemsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const LOCAL_DB_KEY = 'lost_and_found_db_v1';
+    const API_BASE = '/api/items';
+
+    // DOM References
+    const form = document.getElementById('itemForm');
+    const editIdInput = document.getElementById('editId');
+    const formHeading = document.getElementById('formHeading');
+    const formSubtext = document.getElementById('formSubtext');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const itemsContainer = document.getElementById('itemsContainer');
+    const countLabel = document.getElementById('countLabel');
+    const storageBadge = document.getElementById('storageBadge');
+    const toastEl = document.getElementById('toast');
+
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortSelect = document.getElementById('sortSelect');
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+
+    const statTotal = document.getElementById('statTotal');
+    const statLost = document.getElementById('statLost');
+    const statFound = document.getElementById('statFound');
+    const statResolved = document.getElementById('statResolved');
+
+    let useBackendApi = false;
+    let visibleItems = [];
+    let toastTimer = null;
+
+    // Initialize default date to today
+    function setTodayDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('incident_date').value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
+    }
+
+    function esc(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[m]));
+    }
+
+    // --- LocalStorage Database Helpers (Fallback when running standalone HTML) ---
+    function seedLocalDb() {
+      const existing = localStorage.getItem(LOCAL_DB_KEY);
+      if (existing !== null) return;
+      const sampleData = [
+        {
+          id: 1,
+          report_type: 'found',
+          title: 'Scientific Calculator (Casio fx-991EX)',
+          category: 'Electronics',
+          description: 'Found on a desk near the back row after morning lecture.',
+          location_name: 'Room 204',
+          incident_date: '2026-11-24',
+          reporter_name: 'Marco Santos',
+          contact_info: '0917-555-0142',
+          status: 'open',
+          created_at: '2026-11-24T09:15:00.000Z'
+        },
+        {
+          id: 2,
+          report_type: 'lost',
+          title: 'Navy Blue Umbrella',
+          category: 'Accessories',
+          description: 'Compact foldable umbrella with wooden handle.',
+          location_name: 'Main Gate Lobby',
+          incident_date: '2026-11-23',
+          reporter_name: 'Elena Reyes',
+          contact_info: 'elena.reyes@example.com',
+          status: 'open',
+          created_at: '2026-11-23T14:30:00.000Z'
+        },
+        {
+          id: 3,
+          report_type: 'found',
+          title: 'Keychain with Dorm Key & Mini Flashlight',
+          category: 'Keys',
+          description: 'Silver ring with two keys and a small red tag.',
+          location_name: 'Student Center',
+          incident_date: '2026-11-22',
+          reporter_name: 'David Cruz',
+          contact_info: '0918-555-0199',
+          status: 'claimed',
+          created_at: '2026-11-22T11:00:00.000Z'
+        }
+      ];
+      localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(sampleData));
+    }
+
+    function readLocalItems() {
+      seedLocalDb();
+      try {
+        return JSON.parse(localStorage.getItem(LOCAL_DB_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function writeLocalItems(items) {
+      localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(items));
+    }
+
+    function filterAndSortLocal(allItems, { search, type, status, sort }) {
+      let result = [...allItems];
+
+      if (type) {
+        result = result.filter((item) => item.report_type === type);
+      }
+      if (status) {
+        result = result.filter((item) => item.status === status);
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        result = result.filter((item) =>
+          [item.title, item.description, item.location_name, item.category, item.reporter_name]
+            .some((field) => String(field || '').toLowerCase().includes(q))
+        );
+      }
+
+      switch (sort) {
+        case 'oldest':
+          result.sort((a, b) => Number(a.id) - Number(b.id));
+          break;
+        case 'date_desc':
+          result.sort((a, b) => String(b.incident_date).localeCompare(String(a.incident_date)) || Number(b.id) - Number(a.id));
+          break;
+        case 'date_asc':
+          result.sort((a, b) => String(a.incident_date).localeCompare(String(b.incident_date)) || Number(a.id) - Number(b.id));
+          break;
+        case 'title_asc':
+          result.sort((a, b) => String(a.title).localeCompare(String(b.title), undefined, { sensitivity: 'base' }));
+          break;
+        case 'title_desc':
+          result.sort((a, b) => String(b.title).localeCompare(String(a.title), undefined, { sensitivity: 'base' }));
+          break;
+        case 'type_asc':
+          result.sort((a, b) => String(a.report_type).localeCompare(String(b.report_type)) || Number(b.id) - Number(a.id));
+          break;
+        case 'status_asc':
+          result.sort((a, b) => String(a.status).localeCompare(String(b.status)) || Number(b.id) - Number(a.id));
+          break;
+        case 'newest':
+        default:
+          result.sort((a, b) => Number(b.id) - Number(a.id));
+          break;
+      }
+
+      return result;
+    }
+
+    // --- Backend Detection & Data Operations ---
+    async function detectBackend() {
+      try {
+        const res = await fetch(`${API_BASE}?limit=1`, { cache: 'no-store' });
+        if (res.ok) {
+          useBackendApi = true;
+          storageBadge.textContent = 'SQLite API Connected';
+          return;
+        }
+      } catch {
+        // Fallback to localStorage
+      }
+      useBackendApi = false;
+      storageBadge.textContent = 'Browser LocalStorage DB';
+    }
+
+    async function loadItems() {
+      const query = {
+        search: searchInput.value.trim(),
+        type: typeFilter.value,
+        status: statusFilter.value,
+        sort: sortSelect.value
+      };
+
+      if (useBackendApi) {
+        try {
+          const params = new URLSearchParams();
+          if (query.search) params.set('search', query.search);
+          if (query.type) params.set('type', query.type);
+          if (query.status) params.set('status', query.status);
+          if (query.sort) params.set('sort', query.sort);
+
+          const [filteredRes, allRes] = await Promise.all([
+            fetch(`${API_BASE}?${params.toString()}`),
+            fetch(API_BASE)
+          ]);
+          visibleItems = await filteredRes.json();
+          const allItems = await allRes.json();
+          updateStats(allItems);
+          renderItems(visibleItems);
+          return;
+        } catch {
+          useBackendApi = false;
+          storageBadge.textContent = 'Browser LocalStorage DB';
+        }
+      }
+
+      const allLocal = readLocalItems();
+      updateStats(allLocal);
+      visibleItems = filterAndSortLocal(allLocal, query);
+      renderItems(visibleItems);
+    }
+
+    function updateStats(items) {
+      statTotal.textContent = items.length;
+      statLost.textContent = items.filter((i) => i.report_type === 'lost').length;
+      statFound.textContent = items.filter((i) => i.report_type === 'found').length;
+      statResolved.textContent = items.filter((i) => i.status === 'claimed' || i.status === 'returned').length;
+    }
+
+    function renderItems(items) {
+      countLabel.textContent = `${items.length} record(s) displayed`;
+
+      if (!items.length) {
+        itemsContainer.innerHTML = `
+          <div class="card empty-state">
+            <strong>No matching records found</strong>
+            <p style="margin:6px 0 0; font-size:0.88rem;">Try adjusting your search keyword, filters, or add a new report.</p>
+          </div>
+        `;
+        return;
+      }
+
+      itemsContainer.innerHTML = items.map((item) => {
+        const nextStatus = item.report_type === 'found' ? 'claimed' : 'returned';
+        const resolveLabel = item.report_type === 'found' ? 'Mark Claimed' : 'Mark Returned';
+
+        return `
+          <article class="card item-card ${esc(item.report_type)}">
+            <div class="item-top">
+              <div class="badges">
+                <span class="badge badge-${esc(item.report_type)}">${esc(item.report_type)}</span>
+                <span class="badge badge-${esc(item.status)}">${esc(item.status)}</span>
+                <span class="item-title">${esc(item.title)}</span>
+              </div>
+              <small style="color:var(--muted); font-weight:600;">#${esc(item.id)} • ${esc(item.category)}</small>
+            </div>
+
+            <p class="item-desc">${esc(item.description)}</p>
+
+            <div class="meta">
+              <strong>Location:</strong> ${esc(item.location_name)} &nbsp;|&nbsp;
+              <strong>Date:</strong> ${esc(item.incident_date)}<br />
+              <strong>Reporter:</strong> ${esc(item.reporter_name)} (${esc(item.contact_info)})
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn-edit" onclick="startEdit(${Number(item.id)})">Edit</button>
+              ${
+                item.status === 'open'
+                  ? `<button type="button" class="btn-resolve" onclick="quickStatus(${Number(item.id)}, '${nextStatus}')">${resolveLabel}</button>`
+                  : `<button type="button" class="btn-reopen" onclick="quickStatus(${Number(item.id)}, 'open')">Reopen</button>`
+              }
+              <button type="button" class="btn-delete" onclick="deleteItem(${Number(item.id)})">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // --- Form Create & Update Handlers ---
+    window.startEdit = function (id) {
+      const item = visibleItems.find((x) => Number(x.id) === Number(id));
+      if (!item) return;
+
+      editIdInput.value = item.id;
+      document.getElementById('report_type').value = item.report_type;
+      document.getElementById('title').value = item.title;
+      document.getElementById('category').value = item.category || 'General';
+      document.getElementById('location_name').value = item.location_name;
+      document.getElementById('incident_date').value = item.incident_date;
+      document.getElementById('description').value = item.description;
+      document.getElementById('reporter_name').value = item.reporter_name;
+      document.getElementById('contact_info').value = item.contact_info;
+      document.getElementById('status').value = item.status || 'open';
+
+      formHeading.textContent = `Edit Report #${item.id}`;
+      formSubtext.textContent = 'Update fields and click Save Changes.';
+      submitBtn.textContent = 'Save Changes';
+      cancelEditBtn.style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    function resetForm() {
+      form.reset();
+      editIdInput.value = '';
+      document.getElementById('category').value = 'General';
+      document.getElementById('status').value = 'open';
+      setTodayDate();
+      formHeading.textContent = 'New Report';
+      formSubtext.textContent = 'Fill in the item details below to save a record.';
+      submitBtn.textContent = 'Add Item';
+      cancelEditBtn.style.display = 'none';
+    }
+
+    cancelEditBtn.addEventListener('click', resetForm);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const id = editIdInput.value;
+      const payload = {
+        report_type: document.getElementById('report_type').value,
+        title: document.getElementById('title').value.trim(),
+        category: document.getElementById('category').value.trim() || 'General',
+        location_name: document.getElementById('location_name').value.trim(),
+        incident_date: document.getElementById('incident_date').value,
+        description: document.getElementById('description').value.trim(),
+        reporter_name: document.getElementById('reporter_name').value.trim(),
+        contact_info: document.getElementById('contact_info').value.trim(),
+        status: document.getElementById('status').value
+      };
+
+      if (useBackendApi) {
+        const res = await fetch(id ? `${API_BASE}/${id}` : API_BASE, {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert(err.error || 'Failed to save item.');
+          return;
+        }
+        resetForm();
+        await loadItems();
+        showToast(id ? `Report #${id} updated.` : 'New report added.');
+        return;
+      }
+
+      const items = readLocalItems();
+      if (id) {
+        const idx = items.findIndex((x) => Number(x.id) === Number(id));
+        if (idx !== -1) {
+          items[idx] = { ...items[idx], ...payload };
+          writeLocalItems(items);
+          showToast(`Report #${id} updated.`);
+        }
+      } else {
+        const nextId = items.length ? Math.max(...items.map((x) => Number(x.id) || 0)) + 1 : 1;
+        items.push({
+          id: nextId,
+          ...payload,
+          created_at: new Date().toISOString()
+        });
+        writeLocalItems(items);
+        showToast('New report added.');
+      }
+
+      resetForm();
+      await loadItems();
+    });
+
+    window.quickStatus = async function (id, newStatus) {
+      if (useBackendApi) {
+        await fetch(`${API_BASE}/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+      } else {
+        const items = readLocalItems().map((item) =>
+          Number(item.id) === Number(id) ? { ...item, status: newStatus } : item
+        );
+        writeLocalItems(items);
+      }
+      await loadItems();
+      showToast(`Status changed to "${newStatus}".`);
+    };
+
+    window.deleteItem = async function (id) {
+      if (useBackendApi) {
+        await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+      } else {
+        const items = readLocalItems().filter((item) => Number(item.id) !== Number(id));
+        writeLocalItems(items);
+      }
+      if (editIdInput.value === String(id)) {
+        resetForm();
+      }
+      await loadItems();
+      showToast(`Report #${id} deleted.`);
+    };
+
+    // Filter, Search & Sort Listeners
+    searchInput.addEventListener('input', loadItems);
+    typeFilter.addEventListener('change', loadItems);
+    statusFilter.addEventListener('change', loadItems);
+    sortSelect.addEventListener('change', loadItems);
+
+    resetFiltersBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      typeFilter.value = '';
+      statusFilter.value = '';
+      sortSelect.value = 'newest';
+      loadItems();
+      showToast('Filters and sorting reset.');
+    });
+
+    // Startup
+    (async function init() {
+      setTodayDate();
+      await detectBackend();
+      await loadItems();
+    })();
+  </script>
+</body>
+</html>
