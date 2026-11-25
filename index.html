@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lost & Found System (CRUD + Sorting)</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #f1f5f9; color: #0f172a; padding: 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 18px; font-size: 1.75rem; }
+    .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 2px 8px rgba(15,23,42,0.06); margin-bottom: 14px; }
+    label { display: block; font-size: 0.84rem; font-weight: 600; margin-top: 10px; margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.92rem; }
+    textarea { min-height: 68px; resize: vertical; }
+    button { cursor: pointer; border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; font-size: 0.86rem; }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-primary { background: #2563eb; color: #fff; flex: 1; padding: 10px; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr; gap: 10px; margin-bottom: 10px; }
+    @media (max-width: 700px) { .toolbar { grid-template-columns: 1fr; } }
+    .toolbar input, .toolbar select { margin: 0; }
+    .item-card { border-left: 5px solid #2563eb; }
+    .item-card.found { border-left-color: #059669; }
+    .item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 3px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .badge-lost { background: #fee2e2; color: #b91c1c; }
+    .badge-found { background: #d1fae5; color: #047857; }
+    .badge-status { background: #e2e8f0; color: #334155; }
+    .meta { font-size: 0.85rem; color: #475569; margin: 8px 0; line-height: 1.45; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .btn-edit { background: #0284c7; color: #fff; }
+    .btn-resolve { background: #059669; color: #fff; }
+    .btn-reopen { background: #d97706; color: #fff; }
+    .btn-delete { background: #ef4444; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lost &amp; Found System</h1>
+
+    <div class="grid">
+      <!-- CREATE / UPDATE FORM -->
+      <form class="card" id="itemForm">
+        <h2 id="formHeading" style="margin-top:0; font-size:1.15rem;">New Report</h2>
+        <input type="hidden" id="editId" />
+
+        <label for="report_type">Report Type</label>
+        <select id="report_type" required>
+          <option value="lost">Lost Item</option>
+          <option value="found">Found Item</option>
+        </select>
+
+        <label for="title">Item Title</label>
+        <input id="title" type="text" placeholder="e.g., Blue Tumbler" required />
+
+        <label for="category">Category</label>
+        <input id="category" type="text" value="General" />
+
+        <label for="location_name">Location</label>
+        <input id="location_name" type="text" placeholder="e.g., Room 304 / Gym" required />
+
+        <label for="incident_date">Incident Date</label>
+        <input id="incident_date" type="date" required />
+
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="Details to help identify the item..." required></textarea>
+
+        <label for="reporter_name">Reporter Name</label>
+        <input id="reporter_name" type="text" required />
+
+        <label for="contact_info">Contact Info</label>
+        <input id="contact_info" type="text" required />
+
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="open">Open</option>
+          <option value="claimed">Claimed</option>
+          <option value="returned">Returned</option>
+        </select>
+
+        <div class="btn-row">
+          <button class="btn-primary" type="submit" id="submitBtn">Add Item</button>
+          <button class="btn-secondary" type="button" id="cancelEditBtn" style="display:none;">Cancel</button>
+        </div>
+      </form>
+
+      <!-- SEARCH, FILTER, SORT & LIST -->
+      <div>
+        <div class="card">
+          <div class="toolbar">
+            <input id="searchInput" type="search" placeholder="Search title, location, category..." />
+            <select id="typeFilter">
+              <option value="">All Types</option>
+              <option value="lost">Lost</option>
+              <option value="found">Found</option>
+            </select>
+            <select id="statusFilter">
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="claimed">Claimed</option>
+              <option value="returned">Returned</option>
+            </select>
+            <select id="sortSelect" aria-label="Sort items">
+              <option value="newest">Sort: Newest First</option>
+              <option value="oldest">Sort: Oldest First</option>
+              <option value="date_desc">Sort: Date (Newest)</option>
+              <option value="date_asc">Sort: Date (Oldest)</option>
+              <option value="title_asc">Sort: Title (A–Z)</option>
+              <option value="title_desc">Sort: Title (Z–A)</option>
+              <option value="type_asc">Sort: Type (Found/Lost)</option>
+              <option value="status_asc">Sort: Status</option>
+            </select>
+          </div>
+          <div id="countLabel" style="font-size:0.84rem; color:#64748b;">Loading...</div>
+        </div>
+
+        <div id="itemsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('itemForm');
+    const editIdInput = document.getElementById('editId');
+    const formHeading = document.getElementById('formHeading');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const itemsContainer = document.getElementById('itemsContainer');
+    const countLabel = document.getElementById('countLabel');
+
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortSelect = document.getElementById('sortSelect');
+
+    let currentItems = [];
+    document.getElementById('incident_date').valueAsDate = new Date();
+
+    function esc(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    async function loadItems() {
+      const params = new URLSearchParams();
+      if (searchInput.value.trim()) params.set('search', searchInput.value.trim());
+      if (typeFilter.value) params.set('type', typeFilter.value);
+      if (statusFilter.value) params.set('status', statusFilter.value);
+      if (sortSelect.value) params.set('sort', sortSelect.value);
+
+      const res = await fetch(`/api/items?${params.toString()}`);
+      currentItems = await res.json();
+      renderItems(currentItems);
+    }
+
+    function renderItems(items) {
+      countLabel.textContent = `${items.length} item(s) shown`;
+      if (!items.length) {
+        itemsContainer.innerHTML = '<div class="card">No records match your current filters.</div>';
+        return;
+      }
+
+      itemsContainer.innerHTML = items.map(item => {
+        const nextStatus = item.report_type === 'found' ? 'claimed' : 'returned';
+        const resolveText = item.report_type === 'found' ? 'Mark Claimed' : 'Mark Returned';
+
+        return `
+          <div class="card item-card ${item.report_type}">
+            <div class="item-top">
+              <div>
+                <span class="badge badge-${item.report_type}">${item.report_type}</span>
+                <span class="badge badge-status">${item.status}</span>
+                <strong style="font-size:1.08rem; margin-left:6px;">${esc(item.title)}</strong>
+              </div>
+              <small style="color:#64748b;">#${item.id} • ${esc(item.category)}</small>
+            </div>
+            <p style="margin:10px 0 6px;">${esc(item.description)}</p>
+            <div class="meta">
+              <strong>Location:</strong> ${esc(item.location_name)} • <strong>Date:</strong> ${esc(item.incident_date)}<br/>
+              <strong>Reporter:</strong> ${esc(item.reporter_name)} (${esc(item.contact_info)})
+            </div>
+            <div class="actions">
+              <button class="btn-edit" onclick="startEdit(${item.id})">Edit</button>
+              ${item.status === 'open'
+                ? `<button class="btn-resolve" onclick="quickStatus(${item.id}, '${nextStatus}')">${resolveText}</button>`
+                : `<button class="btn-reopen" onclick="quickStatus(${item.id}, 'open')">Reopen</button>`
+              }
+              <button class="btn-delete" onclick="deleteItem(${item.id})">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function startEdit(id) {
+      const item = currentItems.find(x => x.id === id);
+      if (!item) return;
+
+      editIdInput.value = item.id;
+      document.getElementById('report_type').value = item.report_type;
+      document.getElementById('title').value = item.title;
+      document.getElementById('category').value = item.category;
+      document.getElementById('location_name').value = item.location_name;
+      document.getElementById('incident_date').value = item.incident_date;
+      document.getElementById('description').value = item.description;
+      document.getElementById('reporter_name').value = item.reporter_name;
+      document.getElementById('contact_info').value = item.contact_info;
+      document.getElementById('status').value = item.status;
+
+      formHeading.textContent = `Edit Report #${item.id}`;
+      submitBtn.textContent = 'Save Changes';
+      cancelEditBtn.style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      form.reset();
+      editIdInput.value = '';
+      document.getElementById('category').value = 'General';
+      document.getElementById('status').value = 'open';
+      document.getElementById('incident_date').valueAsDate = new Date();
+      formHeading.textContent = 'New Report';
+      submitBtn.textContent = 'Add Item';
+      cancelEditBtn.style.display = 'none';
+    }
+
+    cancelEditBtn.addEventListener('click', resetForm);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = editIdInput.value;
+      const payload = {
+        report_type: document.getElementById('report_type').value,
+        title: document.getElementById('title').value,
+        category: document.getElementById('category').value,
+        location_name: document.getElementById('location_name').value,
+        incident_date: document.getElementById('incident_date').value,
+        description: document.getElementById('description').value,
+        reporter_name: document.getElementById('reporter_name').value,
+        contact_info: document.getElementById('contact_info').value,
+        status: document.getElementById('status').value
+      };
+
+      const url = id ? `/api/items/${id}` : '/api/items';
+      const method = id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        resetForm();
+        loadItems();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Operation failed');
+      }
+    });
+
+    async function quickStatus(id, status) {
+      await fetch(`/api/items/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      loadItems();
+    }
+
+    async function deleteItem(id) {
+      await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      if (editIdInput.value === String(id)) resetForm();
+      loadItems();
+    }
+
+    searchInput.addEventListener('input', loadItems);
+    typeFilter.addEventListener('change', loadItems);
+    statusFilter.addEventListener('change', loadItems);
+    sortSelect.addEventListener('change', loadItems);
+
+    loadItems();
+  </script>
+</body>
+</html>
